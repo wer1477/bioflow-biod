@@ -1,0 +1,57 @@
+{
+ "fraction": 0.15,
+ "seed": 20261022,
+ "total_items": 117,
+ "sourceSamples": 777,
+ "batches": [
+  {
+   "batch_id": "verify_001",
+   "path": "scripts/gen_spec/tasks/verify_001.json",
+   "output_path": ".tmp/gen_verify/verify_001.jsonl",
+   "kind": "tool",
+   "n": 18
+  },
+  {
+   "batch_id": "verify_002",
+   "path": "scripts/gen_spec/tasks/verify_002.json",
+   "output_path": ".tmp/gen_verify/verify_002.jsonl",
+   "kind": "tool",
+   "n": 18
+  },
+  {
+   "batch_id": "verify_003",
+   "path": "scripts/gen_spec/tasks/verify_003.json",
+   "output_path": ".tmp/gen_verify/verify_003.jsonl",
+   "kind": "tool",
+   "n": 18
+  },
+  {
+   "batch_id": "verify_004",
+   "path": "scripts/gen_spec/tasks/verify_004.json",
+   "output_path": ".tmp/gen_verify/verify_004.jsonl",
+   "kind": "tool",
+   "n": 18
+  },
+  {
+   "batch_id": "verify_005",
+   "path": "scripts/gen_spec/tasks/verify_005.json",
+   "output_path": ".tmp/gen_verify/verify_005.jsonl",
+   "kind": "tool",
+   "n": 14
+  },
+  {
+   "batch_id": "verify_006",
+   "path": "scripts/gen_spec/tasks/verify_006.json",
+   "output_path": ".tmp/gen_verify/verify_006.jsonl",
+   "kind": "kb",
+   "n": 16
+  },
+  {
+   "batch_id": "verify_007",
+   "path": "scripts/gen_spec/tasks/verify_007.json",
+   "output_path": ".tmp/gen_verify/verify_007.jsonl",
+   "kind": "kb",
+   "n": 15
+  }
+ ]
+}

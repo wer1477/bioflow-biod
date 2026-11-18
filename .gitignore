@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.hf_cache/
+artifacts/
+Models/*/
+Datasets/*.json
+*.pt
+*.safetensors

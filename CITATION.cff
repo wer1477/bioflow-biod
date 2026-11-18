@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the paper and this repository."
+title: "Biod: a trained decision layer for bioinformatics agents"
+type: software
+authors:
+  - name: "Bioflow Team"
+version: 0.1.0
+date-released: 2026-11-18
+url: "https://github.com/wer1477/bioflow-biod"
+license: Apache-2.0
