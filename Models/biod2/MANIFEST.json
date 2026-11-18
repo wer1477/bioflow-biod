@@ -1,0 +1,113 @@
+{
+ "schema": "biod.models/v1",
+ "updated_at": "2026-11-04",
+ "scope": "paper1-9task-7head",
+ "versions": {
+  "paper1-2B-s20261102": {
+   "path": "artifacts/runs/paper1-2B-s20261102/best",
+   "base": "Models/foundation-model/Qwen3.5-2B-Base",
+   "capacity": "2B",
+   "seed": 20261102,
+   "val_score": 0.92892,
+   "test_legacy": 0.921939,
+   "test_mixed": 0.925554,
+   "status": "candidate"
+  },
+  "paper1-2B-s20261103": {
+   "path": "artifacts/runs/paper1-2B-s20261103/best",
+   "base": "Models/foundation-model/Qwen3.5-2B-Base",
+   "capacity": "2B",
+   "seed": 20261103,
+   "val_score": 0.91795,
+   "test_legacy": 0.904071,
+   "test_mixed": 0.909876,
+   "status": "candidate"
+  },
+  "paper1-4B-s20261102": {
+   "path": "artifacts/runs/paper1-4B-s20261102/best",
+   "base": "Models/foundation-model/Qwen3.5-4B-Base",
+   "capacity": "4B",
+   "seed": 20261102,
+   "val_score": 0.935462,
+   "test_legacy": 0.921414,
+   "test_mixed": 0.924196,
+   "status": "candidate"
+  },
+  "paper1-4B-s20261103": {
+   "path": "artifacts/runs/paper1-4B-s20261103/best",
+   "base": "Models/foundation-model/Qwen3.5-4B-Base",
+   "capacity": "4B",
+   "seed": 20261103,
+   "val_score": 0.915264,
+   "test_legacy": 0.909685,
+   "test_mixed": 0.911648,
+   "status": "candidate"
+  },
+  "paper1-4B-s20261104": {
+   "path": "artifacts/runs/paper1-4B-s20261104/best",
+   "base": "Models/foundation-model/Qwen3.5-4B-Base",
+   "capacity": "4B",
+   "seed": 20261104,
+   "val_score": 0.937282,
+   "test_legacy": 0.917795,
+   "test_mixed": 0.924539,
+   "status": "candidate"
+  },
+  "paper1-9B-s20261102": {
+   "path": "artifacts/runs/paper1-9B-s20261102/best",
+   "base": "Models/foundation-model/Qwen3.5-9B-Base",
+   "capacity": "9B",
+   "seed": 20261102,
+   "val_score": 0.929888,
+   "test_legacy": 0.922905,
+   "test_mixed": 0.928507,
+   "status": "candidate"
+  },
+  "paper1-9B-s20261103": {
+   "path": "artifacts/runs/paper1-9B-s20261103/best",
+   "base": "Models/foundation-model/Qwen3.5-9B-Base",
+   "capacity": "9B",
+   "seed": 20261103,
+   "val_score": 0.915755,
+   "test_legacy": 0.933539,
+   "test_mixed": 0.937154,
+   "status": "candidate"
+  },
+  "paper1-9B-s20261104": {
+   "path": "artifacts/runs/paper1-9B-s20261104/best",
+   "base": "Models/foundation-model/Qwen3.5-9B-Base",
+   "capacity": "9B",
+   "seed": 20261104,
+   "val_score": 0.900703,
+   "test_legacy": 0.89333,
+   "test_mixed": 0.901187,
+   "status": "candidate"
+  },
+  "paper1-9B-s20261102-lr2e5": {
+   "path": "artifacts/runs/paper1-9B-s20261102-lr2e5/best",
+   "base": "Models/foundation-model/Qwen3.5-9B-Base",
+   "capacity": "9B",
+   "seed": 20261102,
+   "val_score": 0.8906005169930922,
+   "test_legacy": 0.877089,
+   "test_mixed": 0.886591,
+   "status": "diagnostic",
+   "note": "lr_lora=2e-5 / lr_head=1e-4; worse than main 9B; not a candidate"
+  },
+  "paper1-9B-s20261105": {
+   "path": "artifacts/runs/paper1-9B-s20261105/best",
+   "base": "Models/foundation-model/Qwen3.5-9B-Base",
+   "capacity": "9B",
+   "seed": 20261105,
+   "val_score": 0.9323802065820171,
+   "test_legacy": 0.924509,
+   "test_mixed": 0.929833,
+   "status": "candidate_robustness",
+   "note": "4th 9B seed triggered by 3-seed SD 2.08pp; not part of primary 3-seed matrix"
+  }
+ },
+ "deploy_pin": null,
+ "note": "8 primary candidates + 1 9B robustness seed + 1 lower-LR 9B diagnostic; 9B no robust gain over 4B; no deploy pin",
+ "data_manifest": "docs/paper1/manifests/train-v1.json",
+ "data_git_commit": "8428119"
+}

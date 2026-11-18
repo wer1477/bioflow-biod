@@ -1,0 +1,100 @@
+bioinformatics/cancer-genomics-analysis | cancer-genomics-analysis | Computational cancer genomics workflows. Somatic mutation detection and annotation, structural variation characterization, copy number analysis, tumor
+bioinformatics/pharmgx-reporter | pharmgx-reporter | Generate pharmacogenomics (PGx) reports from 23andMe/AncestryDNA raw genotypes: star-allele and diplotype calls, CPIC-level drug recommendations, and 
+biomcp_variant_normalize_car | BioMCP ClinGen CAR Normalization | Perform a bounded ClinGen Allele Registry normalization lookup for supported RefSeq HGVS; returns source facts without inferring equivalence.
+biomcp_variant_erepo | BioMCP ClinGen ERepo Assertions | Read expert-curated variant assertions from the ClinGen Evidence Repository, preserving versioned source facts.
+biomcp_gene_cspec | BioMCP ClinGen CSpec Listing | List gene-related CSpec resource IRIs and paginated content; used to verify the sources of ACMG/AMP rules.
+biocontext_search_studies | BioContext Trial Search | Advanced ClinicalTrials.gov search with multi-field filters; use when the trial question is broader than a single condition or intervention.
+biocontext_get_studies_by_condition | BioContext Trials by Condition | Search trials by condition with status/type/phase breakdowns; use for evidence-landscape and recruitment questions.
+biocontext_get_studies_by_intervention | BioContext Trials by Intervention | Search trials by intervention with condition and phase filters; use to find prior/ongoing studies of a drug or device.
+biocontext_get_recruiting_studies_by_location | BioContext Recruiting Trials | Find recruiting trials by geographic location; use for patient-access and feasibility questions.
+biocontext_get_study_details | BioContext Trial Details | Read a trial's design, eligibility, outcomes, locations, contacts, and metadata by NCT ID; use before citing a trial.
+biocontext_search_drugs_fda | BioContext FDA Drug Search | Search FDA Drugs@FDA for approved products by multiple criteria; use for approval and label questions.
+biocontext_get_drug_by_application_number | BioContext Drug by Application | Read an FDA-approved drug by NDA/ANDA/BLA application number; use when the application number is known.
+biocontext_get_drug_label_info | BioContext Drug Label | Read FDA labeling information: ingredients, dosage forms, routes, and administration; use for label-level facts.
+biocontext_search_drugs_by_therapeutic_class | BioContext Drugs by Class | Search drugs by therapeutic or pharmacologic class; call get_available_pharmacologic_classes first for exact terms.
+biocontext_get_available_pharmacologic_classes | BioContext Pharmacologic Classes | List available FDA pharmacologic classes; use to choose an exact class term before searching.
+biocontext_get_generic_equivalents | BioContext Generic Equivalents | Find generic equivalents for a brand-name drug via ANDA entries; use for substitution and formulation questions.
+biocontext_get_drug_statistics | BioContext Drug Statistics | Read aggregate FDA drug statistics such as top sponsors, dosage forms, routes, and marketing status; use for landscape summaries.
+biocontext_count_drugs_by_field | BioContext Drug Counts | Count unique values in a field across FDA-approved drugs; use for descriptive analyses, not causal claims.
+bioinformatics/molecular-cloning | molecular-cloning | Molecular cloning simulation and design. PCR amplicon prediction, restriction enzyme digestion, Golden Gate and Gibson assembly simulation, primer des
+bioinformatics/synthetic-biology | synthetic-biology | Synthetic biology design and simulation tools. Codon optimization, gene circuit ODE modeling with growth feedback, SBML model creation, bifurcation an
+bioinformatics/immunology-assays | immunology-assays | Computational analysis of immunology experimental data. ATAC-seq differential accessibility, immune cell tracking from microscopy, ELISA data processi
+bioinformatics/pharmacology-wetlab | pharmacology-wetlab | Computational analysis of pharmacology wet-lab experiments. Western blot densitometry, xenograft tumor growth inhibition, pharmaceutical stability mod
+bioinformatics/glycobiology | glycobiology | Glycosylation site prediction and glycobiology analysis. N-glycosylation motif finding, O-glycosylation hotspot prediction, glycan structure resources
+bioinformatics/opentrons-integration | opentrons-integration | Official Opentrons Protocol API for OT-2 and Flex robots. Use when writing protocols specifically for Opentrons hardware with full access to Protocol 
+biocontext_get_antibody_list | BioContext Antibody Search | Search the Antibody Registry by target/vendor metadata; use to check catalog number, clonality, and validated applications before ordering.
+biocontext_get_antibody_information | BioContext Antibody Details | Read an antibody record by ID: catalog number, vendor, clonality, epitope, and applications; use to document reagent provenance.
+bio-doctor | bio-doctor | Check whether Bioagent's local WSL or future laboratory-server capability profiles are actually available. Use before claiming that a local dependency
+bio-fetch | bio-fetch | Fetch public NCBI genome packages or an SRA run converted to FASTQ with explicit output paths and reproducibility manifests. Use after an accession is
+bio-seq | bio-seq | Validate DNA/RNA or protein sequence records, translate nucleotide sequences, and submit a small single-sequence remote NCBI BLAST query. Use for new 
+bio-variant | bio-variant | Annotate small batches of human SNVs and short indels through Ensembl VEP. Use for genomic-coordinate variants or VCF records when gene/transcript con
+bio-peak | bio-peak | Call peaks with MACS2, discover motifs with HOMER, and create transparent promoter/nearest-TSS peak-to-gene candidates. Use only with an explicit geno
+bio-enrich | bio-enrich | Run gene-list functional enrichment through g:Profiler or Enrichr. Use for GO, Reactome, KEGG, and other gene-set over-representation questions after 
+bio-grn | bio-grn | Infer candidate transcription-factor-to-target-gene regulatory associations from a validated bulk or single-cell expression matrix using Arboreto GRNB
+bio-regulatory | bio-regulatory | Prepare versioned CpG-island, ChromHMM, ENCODE peak, or ReMap TF-binding evidence datasets, then query them by gene or genomic region. Use for coordin
+bio-epiedit | bio-epiedit | Rank supplied CRISPRi, CRISPRa, or CRISPRoff guide candidates with explicit sequence, off-target, and regulatory-coordinate evidence. Use for transpar
+bio-multiome | bio-multiome | Validate aligned scRNA/scATAC TSV exports and derive group-wise RNA/ATAC candidate evidence edges from peak-gene links. Use after preprocessing or scV
+bio-workflow | bio-workflow | Plan reviewed RNA-seq, CUT&Tag, or DNA-seq analysis workflows derived from Bioagent compute scripts. Use to inspect required inputs, artifacts, tools,
+bio-longread-variant | bio-longread-variant | Generate and troubleshoot long-read variant-calling commands with the Clair3 family (Clair3, Clair3-RNA, ClairS, ClairS-TO, Clair-Mosaic): platform/mo
+bio-variant-effect | bio-variant-effect | Query AlphaGenome variant-effect predictions with the official Python client (gRPC API) for SNVs/indels: chromatin, splicing, expression and regulator
+bioinformatics/bioimage-analysis | bioimage-analysis | Microscopy image analysis for cell biology. Cell segmentation (Cellpose, watershed), object tracking (trackpy), morphology quantification, colony coun
+bioinformatics/neuropixels-analysis | neuropixels-analysis | Neuropixels neural recording analysis. Load SpikeGLX/OpenEphys data, preprocess, motion correction, Kilosort4 spike sorting, quality metrics, Allen/IB
+bioinformatics/pydicom | pydicom | Python library for working with DICOM (Digital Imaging and Communications in Medicine) files. Use this skill when reading, writing, or modifying medic
+bioinformatics/clinical-imaging | clinical-imaging | Clinical and physiological imaging analysis. Diffusion MRI ADC maps, micro-CT bone morphometry, hemodynamic parameter analysis, circadian rhythm cosin
+bioinformatics/scanpy | scanpy | Standard single-cell RNA-seq analysis pipeline. Use for QC, normalization, dimensionality reduction (PCA/UMAP/t-SNE), clustering, differential express
+bioinformatics/pydeseq2 | pydeseq2 | Differential gene expression analysis (Python DESeq2). Identify DE genes from bulk RNA-seq counts, Wald tests, FDR correction, volcano/MA plots, for R
+bioinformatics/deeptools | deeptools | NGS analysis toolkit. BAM to bigWig conversion, QC (correlation, PCA, fingerprints), heatmaps/profiles (TSS, peaks), for ChIP-seq, RNA-seq, ATAC-seq v
+bioinformatics/etetoolkit | etetoolkit | Phylogenetic tree toolkit (ETE). Tree manipulation (Newick/NHX), evolutionary event detection, orthology/paralogy, NCBI taxonomy, visualization (PDF/S
+bioinformatics/gget | gget | Fast CLI/Python queries to 20+ bioinformatics databases. Use for quick lookups: gene info, BLAST searches, AlphaFold structures, enrichment analysis. 
+bioinformatics/flow-cytometry-analysis | flow-cytometry-analysis | Complete flow cytometry analysis pipeline. FCS file handling, compensation, manual/automated gating, immunophenotyping, CFSE proliferation analysis, c
+bioinformatics/microbial-dynamics | microbial-dynamics | Microbial population dynamics modeling and analysis. Bacterial growth curve fitting (logistic, Gompertz, Baranyi), Lotka-Volterra community dynamics, 
+biocontext_get_panglaodb_marker_genes | BioContext PanglaoDB Markers | Retrieve marker genes from PanglaoDB with species/organ/cell-type filters; use for cell-type annotation evidence, not as ground truth.
+biocontext_get_panglaodb_options | BioContext PanglaoDB Options | List available PanglaoDB organs and cell types; call before a filtered marker query.
+biocontext_search_pride_projects | BioContext PRIDE Search | Search PRIDE mass-spectrometry proteomics projects by keyword and filters; use for proteomics dataset discovery.
+biocontext_get_pride_project | BioContext PRIDE Project | Read a PRIDE project's metadata and experimental details; use before reusing a dataset.
+biocontext_search_pride_proteins | BioContext PRIDE Proteins | Search proteins identified in a PRIDE project; use to check whether a protein was observed in a proteomics dataset.
+biocontext_get_string_id | BioContext STRING ID | Map gene names, synonyms, or UniProt IDs to STRING IDs; call before STRING interaction queries.
+biocontext_get_string_interactions | BioContext STRING Interactions | Retrieve protein-protein interactions above a score threshold; always pass the species; report the score and evidence channels.
+biocontext_get_string_similarity_scores | BioContext STRING Similarity | Retrieve STRING homology similarity scores; use for sequence-similarity context, not as physical interaction evidence.
+biocontext_get_string_network_image | BioContext STRING Network Image | Generate a STRING network image for a protein list; use for visualization, not as a quantitative result.
+biocontext_get_reactome_info_by_identifier | BioContext Reactome | Query Reactome pathway information by identifier; use to map a gene/protein to pathways.
+biocontext_get_interpro_entry | BioContext InterPro Entry | Read an InterPro family/domain/functional-site entry; use for domain annotation and provenance.
+biocontext_search_interpro_entries | BioContext InterPro Search | Search InterPro entries by name, type, database, GO term, or species; use to find a domain family.
+biocontext_get_protein_domains | BioContext Protein Domains | Read a protein's InterPro domain architecture and functional sites; use for domain-level interpretation.
+biocontext_get_uniprot_id_by_protein_symbol | BioContext UniProt by Symbol | Resolve a gene symbol or protein name to a UniProt accession (prefers reviewed entries); use before protein-level queries.
+biocontext_get_uniprot_protein_info | BioContext UniProt Protein | Read UniProt protein information, sequence, function, keywords, and references; use for protein-level evidence.
+biocontext_get_alphafold_info_by_protein_symbol | BioContext AlphaFold | Resolve a protein symbol to a UniProt ID, then read AlphaFold structure predictions; use for structure availability, not experimental structure proof.
+biocontext_get_ensembl_id_from_gene_symbol | BioContext Ensembl ID | Resolve a gene symbol to an Ensembl gene ID for a species; use before Ensembl/GEO/CELLxGENE queries.
+biocontext_get_human_protein_atlas_info | BioContext Human Protein Atlas | Read HPA expression, localization, and pathology data by gene symbol or Ensembl ID; use as tissue-expression evidence with the HPA version in mind.
+evidence-appraisal | evidence-appraisal | Build a claim-evidence matrix linking each claim to a verbatim source, locator, support/contradict verdict, confidence, and retraction status. Use to 
+experiment-design | experiment-design | Turn a hypothesis into an executable design: estimand, controls, randomization, blocking, sample size/power, multiplicity, missing-data plan, statisti
+context7_resolve-library-id | Context7 Resolve Library ID | Resolve a package or product name to a Context7 library ID; call this before querying library docs unless the user already provided an ID in /org/proj
+context7_query-docs | Context7 Query Docs | Retrieve up-to-date documentation and code examples by library ID; resolve the library ID first and never guess one.
+science-search | science-search | Search, retrieve, and download biomedical literature, clinical variant, chemistry, protein-structure, and omics records through the Science Connectors
+bioinformatics/curated-bio-datasets | curated-bio-datasets | Guide to accessing curated biological datasets for computational biology. COSMIC cancer data, GTEx expression, GWAS catalog, GeneBass exome variants, 
+bioinformatics/bioservices | bioservices | Unified Python interface to 40+ bioinformatics services. Use when querying multiple databases (UniProt, KEGG, ChEMBL, Reactome) in a single workflow w
+biomcp_search | BioMCP Cross-Entity Search | Read-only search across gene, variant, literature, clinical trial, drug, disease, pathway, protein, and adverse-event entities; federated literature s
+biomcp_get | BioMCP Detail Card | Fetch entity details by section, e.g. gene BRAF pathways hpa, variant "BRAF V600E" clinvar, trial NCT…; use it to obtain structured evidence cards.
+biomcp_variant_articles | BioMCP Variant Articles Shortlist | Fetch a bounded shortlist of articles for 1–10 variants in one call; shares a 60s upstream budget and may return partial results.
+biomcp_biomcp | BioMCP Read-Only Command Escape Hatch | Pass-through for read-only CLI commands (discover, skill list/render, single-page citation/reference traversal); prefer the typed tools.
+tooluniverse_list_tools | ToolUniverse List Tools | List the tool names available in the gateway by category; locate tools with grep_tools/get_tool_info before calling execute_tool.
+tooluniverse_grep_tools | ToolUniverse Grep Tools | Search the name/description of 2,700+ tools by keyword or regex; suitable for finding a tool before executing it.
+tooluniverse_get_tool_info | ToolUniverse Tool Info | Read a single tool's full definition, parameter schema, and provenance; always check before executing.
+tooluniverse_execute_tool | ToolUniverse Execute Tool | Execute a gateway tool by name and return its result; use it for long-tail queries not covered by science-search or existing CLIs.
+tooluniverse_find_tools | ToolUniverse Find Tools | Retrieve the best-matching tools from a natural-language intent description (may trigger an extra LLM call/latency); use it when the tool name is uncl
+biocontext_get_europepmc_articles | BioContext Europe PMC Articles | Search Europe PMC by query, title, abstract, or author; returns article metadata. Use for literature discovery and for checking whether a citation exi
+biocontext_get_europepmc_fulltext | BioContext Europe PMC Full Text | Fetch full-text XML for a PMC ID; use after identifying an open-access article to verify what the text actually says.
+biocontext_get_biorxiv_preprint_details | BioContext bioRxiv Details | Read title, authors, abstract, version, license, and publication status for a bioRxiv/medRxiv DOI; use to distinguish a preprint from a peer-reviewed 
+biocontext_get_recent_biorxiv_preprints | BioContext Recent Preprints | List recent bioRxiv/medRxiv preprints by date range or count; use for current-awareness scans, never as settled evidence.
+biocontext_search_grants_gov | BioContext Grants.gov | Search grants.gov opportunities by keyword, agency, or criteria; useful for funding-landscape and feasibility questions.
+biocontext_get_available_ontologies | BioContext Ontology List | List OLS ontologies and metadata; call first when you need the exact ontology id before term search.
+biocontext_search_ontology_terms | BioContext Ontology Search | Search terms across OLS ontologies; use to normalize cell types, diseases, chemicals, and phenotypes.
+biocontext_get_term_details | BioContext Ontology Term | Read an ontology term's definition, synonyms, and hierarchical relationships; use to disambiguate a term before citing it.
+biocontext_get_term_hierarchical_children | BioContext Ontology Children | List child terms of an ontology term; use to expand a controlled-vocabulary query or to check classification.
+biocontext_get_go_terms_by_gene | BioContext GO Terms by Gene | Find Gene Ontology terms linked to a gene; use for functional annotation and enrichment interpretation.
+biocontext_get_cell_ontology_terms | BioContext Cell Ontology | Search Cell Ontology terms for a cell type; use to standardize cell annotations across datasets.
+biocontext_get_chebi_terms_by_chemical | BioContext ChEBI Terms | Search ChEBI ontology terms for a chemical or drug; use to map a compound to a stable ontology identifier.
+biocontext_get_efo_id_by_disease_name | BioContext Disease IDs | Resolve a disease name to EFO/Mondo/HP identifiers; call before Open Targets or other disease-indexed queries.
+biocontext_get_open_targets_graphql_schema | BioContext Open Targets Schema | Retrieve the Open Targets GraphQL schema; use before writing a custom target-disease query.
+biocontext_get_open_targets_query_examples | BioContext Open Targets Examples | Retrieve example Open Targets GraphQL queries; use as templates instead of guessing field names.
+biocontext_query_open_targets_graphql | BioContext Open Targets Query | Execute a GraphQL query against Open Targets; use for target-disease association, evidence, and tractability questions.

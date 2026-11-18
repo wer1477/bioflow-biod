@@ -1,0 +1,755 @@
+{
+ "batch_id": "verify_001",
+ "kind": "verify",
+ "dataset": "artifacts/datasets/v1",
+ "output_path": ".tmp/gen_verify/verify_001.jsonl",
+ "instruction": "# 角色：独立标签审核员（verify task）\n\n你是 Biod 项目 SFT 数据集的**独立审核员**。生成侧已经给出了每条样本的候选目录与「按构造」的弱标签；你的任务是**独立判断该标签是否成立**，不要读取 `artifacts/datasets/v1/raw/`、`manifest.json` 或任何生成器说明，也不要假设生成器是对的。\n\n## 输入\nread 本任务 JSON：\n- `items`：待审样本，每条含 `state_sha256`、`kind`（tool|kb）、`state_text`、`claimed`。\n- `catalog`：冻结目录（tool 61 条：id/name/description/domain；kb 32 条：id/name/description/domain）。\n- `output_path`：你要写入的 JSONL 路径。\n- `output_schema`：输出字段。\n\n## 判定规则\n### kind=tool\n模型只能从 61 条工具里选一个最该加载的（或弃权 NO_TOOL）。判定 `claimed.primary` 是否成立：\n- 若 claimed 是工具 id：它必须是给定 state 的**唯一最合理**选择；同域近邻工具（描述更贴近关键词的那些）都不应被优先选择。若存在另一个明显更合适的工具，或这条需求根本不需要任何工具 → incorrect，并给 `corrected_gold`（更合适的 tool id 或 \"NO_TOOL\"）。\n- 若 claimed 是 \"NO_TOOL\"：确认 61 条里**没有**任何一条能合理满足该需求。若存在明显对口工具 → incorrect，给 `corrected_gold`。\n- 严格：模棱两可时判 incorrect（宁可打回，不要放过）。理由必须引用 state 里的具体约束 + catalog 里的具体描述差异。\n\n### kind=kb\n模型对 32 条知识条目打分（2=必需/直接对应，1=相关但不足，0=无关，closed-world）。\n- 检查 `claimed.grades` 是否成立：每个 grade=2 的条目必须被 state 的核心需求**必需**（只靠常识或另一条就够了 → 该条不该是 2）；grade=1 的条目必须确实「相关但不足以满足」；若存在应给 2 却缺失的条目 → incorrect。\n- empty（grades 为空）要有把握说「32 条都不相关」，否则 incorrect。\n- 纠正时给完整 `corrected_grades`（只列非零；未列=0）。\n\n## 输出\n写入 `output_path`，UTF-8 JSONL，一行一条（条数必须等于 items 数）：\n```json\n{\"state_sha256\":\"<原样回填>\",\"verdict\":\"correct|incorrect\",\"corrected_gold\":null,\"corrected_grades\":null,\"reason\":\"<=120 字，引用 state 约束与 catalog 描述差异；不要空话\"}\n```\n- `verdict=correct`：corrected_* 置 null。\n- `verdict=incorrect`：tool 给 `corrected_gold`（tool id 或 NO_TOOL），kb 给 `corrected_grades`（dict）。\n- 禁止输出 markdown 代码块/注释；禁止编造不存在的 id。\n- 最后返回 `{\"batch_id\":\"...\",\"path\":\"...\",\"count\":N,\"verdicts\":{\"correct\":x,\"incorrect\":y}}`。\n\n## 纪律\n- 独立判断，不参考生成器 `why`（本任务不含它）；不读取 raw/ 与 manifest。\n- 只依据 state + catalog；不确定就判 incorrect。\n- 审核是抽检，不要试图把所有条目都判 correct 来省事——你的价值在于抓错。\n",
+ "n": 18,
+ "items": [
+  {
+   "state_sha256": "9bf6af29fbbf3f3063203c05b40a99dcd71fec1988a3f0ea2b5ce31f3aca862b",
+   "kind": "tool",
+   "state_text": "需要可复现：同样的入口和同样的层数上限跑两次，页面集合要一致；只要正文，不带图片和 PDF 附件；约 200 页，时间预算 10 分钟。",
+   "claimed": {
+    "primary": "tavily_tavily_crawl"
+   }
+  },
+  {
+   "state_sha256": "0d450a3b83e19480621a678288ac311ac0d4ea14e1771fb2110bb67e107e40e8",
+   "kind": "tool",
+   "state_text": "Never guess: this product name exists in three ecosystems and I need the candidate list plus which one is officially maintained. 宁可返回空，也不要编一个查不到的编号，下游取文档全靠它，错一次整条链路就废。",
+   "claimed": {
+    "primary": "context7_resolve-library-id"
+   }
+  },
+  {
+   "state_sha256": "ec132b9b48d085152354a41f6995629b96920a65144a6e78a45e8a6c148e03f4",
+   "kind": "tool",
+   "state_text": "只要两样：所属类别和条目名字。不要参数定义，不要简介，更不要顺手执行任何工具；一次调用把各类别都给我，别让我按类别分九次去点。",
+   "claimed": {
+    "primary": "tooluniverse_list_tools"
+   }
+  },
+  {
+   "state_sha256": "cd56829c64fa93640bcdc4038d3f43eceb339c2f6b0dc6031d7715c71479330f",
+   "kind": "tool",
+   "state_text": "只处理我贴的这一个 URL，输出要干净的 markdown（保留标题层级和表格），不要摘要、不要子页面、不要额外请求；这篇要进证据附件。",
+   "claimed": {
+    "primary": "tavily_tavily_extract"
+   }
+  },
+  {
+   "state_sha256": "a50a25f4fdc32d0bf8b0acc9ea8c6a6ee98efed330254bdd2775e98bd4685eec",
+   "kind": "tool",
+   "state_text": "输入限定为长读的 bam 加参考 fasta，不接受 fastq，也不要用短读那套注释工具来凑结果；输出要含重跑用的参数快照、每个样本的平台与模型选择理由，以及后处理过滤的具体阈值。明天上午要贴进投递脚本。",
+   "claimed": {
+    "primary": "bio-longread-variant"
+   }
+  },
+  {
+   "state_sha256": "5c71caf64c83946f6ec4975cee7950e6726b0fec0332fc9970386e5f015d485b",
+   "kind": "tool",
+   "state_text": "我不要关键词精确匹配的结果——术语对不上就一条都召不回来。允许为此多等一次模型调用，按意思给前五个候选，每个附一句为什么匹配，先别执行。",
+   "claimed": {
+    "primary": "tooluniverse_find_tools"
+   }
+  },
+  {
+   "state_sha256": "13773ee308968ebdf91c6c973c5e5ac210824793cccba820b00a3299325d0623",
+   "kind": "tool",
+   "state_text": "每份不超过四页，交 PDF 和可编辑源文件；目标必须写成带时间点和可测量指标的形式；引用只留极简标注，不要文献综述；章节固定为总体目标、干预、监测、随访和停药指征，缺一节就不合格。",
+   "claimed": {
+    "primary": "bioinformatics/treatment-plans"
+   }
+  },
+  {
+   "state_sha256": "ab3093db7fec55dd8351c95dacb160acf947a9c586138de95db1395d473a90dc",
+   "kind": "tool",
+   "state_text": "三分钟内要拉全这批记录的元数据和摘要，输出是结构化字段而不是一段成文报告；不下载 PDF、不做全文解析，也不许扩到检索式以外的库，多出来的命中我都要剔掉。",
+   "claimed": {
+    "primary": "science-search"
+   }
+  },
+  {
+   "state_sha256": "f420c8d40aba68b908e897813d122d62dde44bf47c279c4735f96bc6805e8d35",
+   "kind": "tool",
+   "state_text": "全程只读本地环境：不装包、不改配置、不联网。The result goes straight into our handover doc，每项能力标注是否可用、依据是什么（路径或版本），拿不准就写拿不准。",
+   "claimed": {
+    "primary": "bio-doctor"
+   }
+  },
+  {
+   "state_sha256": "db75b83ff076bea6562ebf18caf80f115ef85a370596b18102676e05eb4c7c2c",
+   "kind": "tool",
+   "state_text": "这轮在隔离环境里做评审，不能联网、不能触发额外的模型推理，也别按语义猜我想找什么。就把类别和条目名全量列出来，按类别分组去重，几十秒内出结果。",
+   "claimed": {
+    "primary": "tooluniverse_list_tools"
+   }
+  },
+  {
+   "state_sha256": "e0471edbbceb32bc3e995e5853a59807775e21d790226c863cdeb3003d313188",
+   "kind": "tool",
+   "state_text": "结果要是纯文本清单，能整段复制进内部文档：资源标识一段、内容分段一段；不要解释性总结，不要图表，也不要自动套成我们的模板格式。",
+   "claimed": {
+    "primary": "biomcp_gene_cspec"
+   }
+  },
+  {
+   "state_sha256": "206fd28cb56b9e32fda4809e353fbf496c12946e0bef9748eb0c71324fc8368f",
+   "kind": "tool",
+   "state_text": "只有一块 24G 显存的卡，384 通道的记录单次必须在 8 小时内处理完；输入只能是采集原始目录，不许先转成自制中间格式；每个单元的质控指标要落成固定字段的表。",
+   "claimed": {
+    "primary": "bioinformatics/neuropixels-analysis"
+   }
+  },
+  {
+   "state_sha256": "5ef1ffb06af3d36fa8ca75201a70414558b6d08df9ca10cc72c47e50bb3b9574",
+   "kind": "tool",
+   "state_text": "只读，不写入任何内容；每个返回字段都标来源和版本，不许混入我们自己的推断；一次查二十个变异，超时保留部分结果并说明哪些没取到。",
+   "claimed": {
+    "primary": "biomcp_variant_erepo"
+   }
+  },
+  {
+   "state_sha256": "2f9d05479b4c0fa52b29c2cab649b0d5b7b0af0827e16dcfd6422cdbcf71b8c4",
+   "kind": "tool",
+   "state_text": "纯 CPU、全程离线，一百多管样本两小时内跑完；不许用深度学习自动门控，也不许联网下任何模型。每管都要留一份质控记录：事件总数、有没有堵针、补偿之后有没有通道溢出。",
+   "claimed": {
+    "primary": "bioinformatics/flow-cytometry-analysis"
+   }
+  },
+  {
+   "state_sha256": "74a150dd67708c0358b26cec0699e22f1c692fddd4a4842a01684194fd00886a",
+   "kind": "tool",
+   "state_text": "交付物必须是能在 CI 里无人值守重跑的 Python 模块：结果带各库版本号和抓取时间，中间结果能落盘缓存，断网重跑不能整批失败。不接受网页问答式查询，也不要综述文字；一次覆盖四个公共库，输出统一字段的映射表。",
+   "claimed": {
+    "primary": "bioinformatics/bioservices"
+   }
+  },
+  {
+   "state_sha256": "8498c113a3e59faa85c8b1315c5e287f5c1a5c606707637eae3fe1aa7ec82602",
+   "kind": "tool",
+   "state_text": "只有 CPU 和 64G 内存，不许装深度学习框架、不许用 GPU；输入是 h5ad，输出要含 UMAP 图、每群标志基因表和一份参数记录（带随机种子），两小时内跑完。",
+   "claimed": {
+    "primary": "bioinformatics/scanpy"
+   }
+  },
+  {
+   "state_sha256": "9a5574d76530337e7d61f96d67560c4011a83585641b4605eaa44f1ab2bdce19",
+   "kind": "tool",
+   "state_text": "手上是三千多行的基因表，主键是基因组注释那边的基因编号，下游要换成蛋白登录号和另一套基因号，还要保住原来的通路编号。人工查不现实，而且要能复现：哪一行没映射上、为什么，都得留痕。",
+   "claimed": {
+    "primary": "bioinformatics/bioservices"
+   }
+  },
+  {
+   "state_sha256": "5e2244918d9a314d98a9a5e6677b15a4d5bcfbf4275ec3e186b14224518f6c9e",
+   "kind": "tool",
+   "state_text": "我记得那类东西的名字里多半带 phylogenetic 或者 tree，两千多个条目实在翻不动。按这两个词在名字和描述里筛一遍，把命中的都给我。",
+   "claimed": {
+    "primary": "tooluniverse_grep_tools"
+   }
+  }
+ ],
+ "catalog": {
+  "tool": [
+   {
+    "id": "tavily_tavily_search",
+    "name": "Tavily Search",
+    "description": "General web search: returns summaries and source links for current information, news, and facts; suitable for time-sensitive questions or topics after the knowledge cutoff.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "tavily_tavily_extract",
+    "name": "Tavily Extract",
+    "description": "Extract the main content from a given URL and return markdown or plain text; suitable for targeted reading when the link is already known.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "tavily_tavily_crawl",
+    "name": "Tavily Crawl",
+    "description": "Crawl a site from a starting URL with configurable depth and breadth; suitable for systematically mapping a website's content structure.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "tavily_tavily_map",
+    "name": "Tavily Map",
+    "description": "Return the list of links reachable from a starting URL; suitable for reviewing site structure before choosing crawl targets.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "tavily_tavily_research",
+    "name": "Tavily Research",
+    "description": "Aggregate multiple sources into a research report for a given research question; suitable for investigation tasks that require cross-source synthesis.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "exa_web_search_exa",
+    "name": "Exa Semantic Search",
+    "description": "Search the web semantically and return clean page content; suitable for describing the target page in natural language rather than keywords.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "exa_web_fetch_exa",
+    "name": "Exa Web Fetch",
+    "description": "Read known URLs (batch supported) into clean markdown content; suitable for close reading from the full text when search snippets are insufficient.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "exa_agent_run",
+    "name": "Exa Research Agent",
+    "description": "Start or resume a multi-step research agent (list building, cross-validation, structured tables); suitable for synthesis tasks that need multiple searches, not for single lookups.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "context7_resolve-library-id",
+    "name": "Context7 Resolve Library ID",
+    "description": "Resolve a package or product name to a Context7 library ID; call this before querying library docs unless the user already provided an ID in /org/project form.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "context7_query-docs",
+    "name": "Context7 Query Docs",
+    "description": "Retrieve up-to-date documentation and code examples by library ID; resolve the library ID first and never guess one.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "science-search",
+    "name": "science-search",
+    "description": "Search, retrieve, and download biomedical literature, clinical variant, chemistry, protein-structure, and omics records through the Science Connectors CLI. Use for PubMed, Europe PMC, bioRxiv, OpenAlex, Semantic Scholar, Crossref, arXiv, UniProt, ClinVar, Open Targets, ChEMBL, AlphaFold DB, GEO, CELLxGENE, and the other sources reported by the runtime registry.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "bioinformatics/curated-bio-datasets",
+    "name": "curated-bio-datasets",
+    "description": "Guide to accessing curated biological datasets for computational biology. COSMIC cancer data, GTEx expression, GWAS catalog, GeneBass exome variants, BioGRID interactions, MSigDB gene sets, DisGeNET disease-gene associations, and GO ontology. For specific database APIs use individual database skills (cosmic-database, gwas-database, etc.).",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "bioinformatics/bioservices",
+    "name": "bioservices",
+    "description": "Unified Python interface to 40+ bioinformatics services. Use when querying multiple databases (UniProt, KEGG, ChEMBL, Reactome) in a single workflow with consistent API. Best for cross-database analysis, ID mapping across services. For quick single-database lookups use gget; for sequence/file manipulation use biopython.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "biomcp_search",
+    "name": "BioMCP Cross-Entity Search",
+    "description": "Read-only search across gene, variant, literature, clinical trial, drug, disease, pathway, protein, and adverse-event entities; federated literature search (PubTator3/Europe PMC/PubMed). A good first hop for clinical and translational questions.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "biomcp_get",
+    "name": "BioMCP Detail Card",
+    "description": "Fetch entity details by section, e.g. gene BRAF pathways hpa, variant \"BRAF V600E\" clinvar, trial NCT…; use it to obtain structured evidence cards.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "biomcp_variant_articles",
+    "name": "BioMCP Variant Articles Shortlist",
+    "description": "Fetch a bounded shortlist of articles for 1–10 variants in one call; shares a 60s upstream budget and may return partial results.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "biomcp_biomcp",
+    "name": "BioMCP Read-Only Command Escape Hatch",
+    "description": "Pass-through for read-only CLI commands (discover, skill list/render, single-page citation/reference traversal); prefer the typed tools.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "tooluniverse_list_tools",
+    "name": "ToolUniverse List Tools",
+    "description": "List the tool names available in the gateway by category; locate tools with grep_tools/get_tool_info before calling execute_tool.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "tooluniverse_grep_tools",
+    "name": "ToolUniverse Grep Tools",
+    "description": "Search the name/description of 2,700+ tools by keyword or regex; suitable for finding a tool before executing it.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "tooluniverse_get_tool_info",
+    "name": "ToolUniverse Tool Info",
+    "description": "Read a single tool's full definition, parameter schema, and provenance; always check before executing.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "tooluniverse_execute_tool",
+    "name": "ToolUniverse Execute Tool",
+    "description": "Execute a gateway tool by name and return its result; use it for long-tail queries not covered by science-search or existing CLIs.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "tooluniverse_find_tools",
+    "name": "ToolUniverse Find Tools",
+    "description": "Retrieve the best-matching tools from a natural-language intent description (may trigger an extra LLM call/latency); use it when the tool name is unclear.",
+    "domain": "Scientific Search and External Data"
+   },
+   {
+    "id": "bio-doctor",
+    "name": "bio-doctor",
+    "description": "Check whether Bioagent's local WSL or future laboratory-server capability profiles are actually available. Use before claiming that a local dependency, R package, Bio CLI, or heavy workflow environment can be executed.",
+    "domain": "General Bioinformatics Workflows and Toolchains"
+   },
+   {
+    "id": "bio-fetch",
+    "name": "bio-fetch",
+    "description": "Fetch public NCBI genome packages or an SRA run converted to FASTQ with explicit output paths and reproducibility manifests. Use after an accession is known; use science-search first when discovery or metadata lookup is needed.",
+    "domain": "General Bioinformatics Workflows and Toolchains"
+   },
+   {
+    "id": "bio-seq",
+    "name": "bio-seq",
+    "description": "Validate DNA/RNA or protein sequence records, translate nucleotide sequences, and submit a small single-sequence remote NCBI BLAST query. Use for new sequences that cannot be answered by annotated-record lookup alone.",
+    "domain": "General Bioinformatics Workflows and Toolchains"
+   },
+   {
+    "id": "bio-variant",
+    "name": "bio-variant",
+    "description": "Annotate small batches of human SNVs and short indels through Ensembl VEP. Use for genomic-coordinate variants or VCF records when gene/transcript consequences, HGVS terms, and co-located clinical-significance evidence are needed.",
+    "domain": "General Bioinformatics Workflows and Toolchains"
+   },
+   {
+    "id": "bio-peak",
+    "name": "bio-peak",
+    "description": "Call peaks with MACS2, discover motifs with HOMER, and create transparent promoter/nearest-TSS peak-to-gene candidates. Use only with an explicit genome assembly and interpret all results as candidate evidence rather than validated regulation.",
+    "domain": "General Bioinformatics Workflows and Toolchains"
+   },
+   {
+    "id": "bio-enrich",
+    "name": "bio-enrich",
+    "description": "Run gene-list functional enrichment through g:Profiler or Enrichr. Use for GO, Reactome, KEGG, and other gene-set over-representation questions after obtaining a gene list.",
+    "domain": "General Bioinformatics Workflows and Toolchains"
+   },
+   {
+    "id": "bio-grn",
+    "name": "bio-grn",
+    "description": "Infer candidate transcription-factor-to-target-gene regulatory associations from a validated bulk or single-cell expression matrix using Arboreto GRNBoost2 or GENIE3. Use when an expression-based GRN is needed; do not present the result as causal or direct binding evidence.",
+    "domain": "General Bioinformatics Workflows and Toolchains"
+   },
+   {
+    "id": "bio-regulatory",
+    "name": "bio-regulatory",
+    "description": "Prepare versioned CpG-island, ChromHMM, ENCODE peak, or ReMap TF-binding evidence datasets, then query them by gene or genomic region. Use for coordinate-level regulatory context; do not interpret an overlap as proof of functional regulation.",
+    "domain": "General Bioinformatics Workflows and Toolchains"
+   },
+   {
+    "id": "bio-epiedit",
+    "name": "bio-epiedit",
+    "description": "Rank supplied CRISPRi, CRISPRa, or CRISPRoff guide candidates with explicit sequence, off-target, and regulatory-coordinate evidence. Use for transparent experimental prioritization; it does not generate guides or claim editing efficacy.",
+    "domain": "General Bioinformatics Workflows and Toolchains"
+   },
+   {
+    "id": "bio-multiome",
+    "name": "bio-multiome",
+    "description": "Validate aligned scRNA/scATAC TSV exports and derive group-wise RNA/ATAC candidate evidence edges from peak-gene links. Use after preprocessing or scVI/MultiVI integration; it does not train models or establish regulatory causality.",
+    "domain": "General Bioinformatics Workflows and Toolchains"
+   },
+   {
+    "id": "bio-workflow",
+    "name": "bio-workflow",
+    "description": "Plan reviewed RNA-seq, CUT&Tag, or DNA-seq analysis workflows derived from Bioagent compute scripts. Use to inspect required inputs, artifacts, tools, resource hints, and dependencies; this release does not execute workflows.",
+    "domain": "General Bioinformatics Workflows and Toolchains"
+   },
+   {
+    "id": "bio-longread-variant",
+    "name": "bio-longread-variant",
+    "description": "Generate and troubleshoot long-read variant-calling commands with the Clair3 family (Clair3, Clair3-RNA, ClairS, ClairS-TO, Clair-Mosaic): platform/model selection, preprocessing checks, Docker/conda preflight, parameterised command templates and post-processing. Use for ONT/PacBio germline, somatic or mosaic detection on a laboratory server; never claims local execution.",
+    "domain": "General Bioinformatics Workflows and Toolchains"
+   },
+   {
+    "id": "bio-variant-effect",
+    "name": "bio-variant-effect",
+    "description": "Query AlphaGenome variant-effect predictions with the official Python client (gRPC API) for SNVs/indels: chromatin, splicing, expression and regulatory impact evidence after VEP/ClinVar annotation; requires ALPHA_GENOME_API_KEY (ALPHAGENOME_API_KEY accepted as an alias) and is research-use only.",
+    "domain": "General Bioinformatics Workflows and Toolchains"
+   },
+   {
+    "id": "bioinformatics/scanpy",
+    "name": "scanpy",
+    "description": "Standard single-cell RNA-seq analysis pipeline. Use for QC, normalization, dimensionality reduction (PCA/UMAP/t-SNE), clustering, differential expression, and visualization. Best for exploratory scRNA-seq analysis with established workflows. For deep learning models use scvi-tools; for data format questions use anndata.",
+    "domain": "Omics and Single-Cell Analysis"
+   },
+   {
+    "id": "bioinformatics/pydeseq2",
+    "name": "pydeseq2",
+    "description": "Differential gene expression analysis (Python DESeq2). Identify DE genes from bulk RNA-seq counts, Wald tests, FDR correction, volcano/MA plots, for RNA-seq analysis.",
+    "domain": "Omics and Single-Cell Analysis"
+   },
+   {
+    "id": "bioinformatics/deeptools",
+    "name": "deeptools",
+    "description": "NGS analysis toolkit. BAM to bigWig conversion, QC (correlation, PCA, fingerprints), heatmaps/profiles (TSS, peaks), for ChIP-seq, RNA-seq, ATAC-seq visualization.",
+    "domain": "Omics and Single-Cell Analysis"
+   },
+   {
+    "id": "bioinformatics/etetoolkit",
+    "name": "etetoolkit",
+    "description": "Phylogenetic tree toolkit (ETE). Tree manipulation (Newick/NHX), evolutionary event detection, orthology/paralogy, NCBI taxonomy, visualization (PDF/SVG), for phylogenomics.",
+    "domain": "Omics and Single-Cell Analysis"
+   },
+   {
+    "id": "bioinformatics/gget",
+    "name": "gget",
+    "description": "Fast CLI/Python queries to 20+ bioinformatics databases. Use for quick lookups: gene info, BLAST searches, AlphaFold structures, enrichment analysis. Best for interactive exploration, simple queries. For batch processing or advanced BLAST use biopython; for multi-database Python workflows use bioservices.",
+    "domain": "Omics and Single-Cell Analysis"
+   },
+   {
+    "id": "bioinformatics/flow-cytometry-analysis",
+    "name": "flow-cytometry-analysis",
+    "description": "Complete flow cytometry analysis pipeline. FCS file handling, compensation, manual/automated gating, immunophenotyping, CFSE proliferation analysis, cell cycle analysis (Dean-Jett-Fox), and apoptosis assays. Extends flowio with analytical workflows. For raw FCS parsing only use flowio.",
+    "domain": "Omics and Single-Cell Analysis"
+   },
+   {
+    "id": "bioinformatics/microbial-dynamics",
+    "name": "microbial-dynamics",
+    "description": "Microbial population dynamics modeling and analysis. Bacterial growth curve fitting (logistic, Gompertz, Baranyi), Lotka-Volterra community dynamics, Gillespie stochastic simulation, biofilm quantification, CFU enumeration, and genome annotation. For metabolic modeling use cobrapy; for sequence analysis use biopython.",
+    "domain": "Omics and Single-Cell Analysis"
+   },
+   {
+    "id": "bioinformatics/bioimage-analysis",
+    "name": "bioimage-analysis",
+    "description": "Microscopy image analysis for cell biology. Cell segmentation (Cellpose, watershed), object tracking (trackpy), morphology quantification, colony counting, colocalization analysis, and cytoskeleton characterization. For pathology WSI use pathml; for flow cytometry use flow-cytometry-analysis.",
+    "domain": "Imaging and Signal Analysis"
+   },
+   {
+    "id": "bioinformatics/neuropixels-analysis",
+    "name": "neuropixels-analysis",
+    "description": "Neuropixels neural recording analysis. Load SpikeGLX/OpenEphys data, preprocess, motion correction, Kilosort4 spike sorting, quality metrics, Allen/IBL curation, AI-assisted visual analysis, for Neuropixels 1.0/2.0 extracellular electrophysiology. Use when working with neural recordings, spike sorting, extracellular electrophysiology, or when the user mentions Neuropixels, SpikeGLX, Open Ephys, Kilosort, quality metrics, or unit curation.",
+    "domain": "Imaging and Signal Analysis"
+   },
+   {
+    "id": "bioinformatics/pydicom",
+    "name": "pydicom",
+    "description": "Python library for working with DICOM (Digital Imaging and Communications in Medicine) files. Use this skill when reading, writing, or modifying medical imaging data in DICOM format, extracting pixel data from medical images (CT, MRI, X-ray, ultrasound), anonymizing DICOM files, working with DICOM metadata and tags, converting DICOM images to other formats, handling compressed DICOM data, or processing medical imaging datasets. Applies to tasks involving medical image analysis, PACS systems, radiology workflows, and healthcare imaging applications.",
+    "domain": "Imaging and Signal Analysis"
+   },
+   {
+    "id": "bioinformatics/clinical-imaging",
+    "name": "clinical-imaging",
+    "description": "Clinical and physiological imaging analysis. Diffusion MRI ADC maps, micro-CT bone morphometry, hemodynamic parameter analysis, circadian rhythm cosinor analysis, ciliary beat frequency (FFT), and tissue deformation optical flow. For DICOM file handling use pydicom; for biosignals use neurokit2.",
+    "domain": "Imaging and Signal Analysis"
+   },
+   {
+    "id": "bioinformatics/cancer-genomics-analysis",
+    "name": "cancer-genomics-analysis",
+    "description": "Computational cancer genomics workflows. Somatic mutation detection and annotation, structural variation characterization, copy number analysis, tumor purity/ploidy estimation, NMF metagene extraction, and DNA damage response network analysis. For cancer mutation databases use cosmic-database; for variant clinical significance use clinvar-database.",
+    "domain": "Clinical and Medical Applications"
+   },
+   {
+    "id": "bioinformatics/clinical-decision-support",
+    "name": "clinical-decision-support",
+    "description": "Generate professional clinical decision support (CDS) documents for pharmaceutical and clinical research settings, including patient cohort analyses (biomarker-stratified with outcomes) and treatment recommendation reports (evidence-based guidelines with decision algorithms). Supports GRADE evidence grading, statistical analysis (hazard ratios, survival curves, waterfall plots), biomarker integration, and regulatory compliance. Outputs publication-ready LaTeX/PDF format optimized for drug development, clinical research, and evidence synthesis.",
+    "domain": "Clinical and Medical Applications"
+   },
+   {
+    "id": "bioinformatics/clinical-reports",
+    "name": "clinical-reports",
+    "description": "Write comprehensive clinical reports including case reports (CARE guidelines), diagnostic reports (radiology/pathology/lab), clinical trial reports (ICH-E3, SAE, CSR), and patient documentation (SOAP, H&P, discharge summaries). Full support with templates, regulatory compliance (HIPAA, FDA, ICH-GCP), and validation tools.",
+    "domain": "Clinical and Medical Applications"
+   },
+   {
+    "id": "bioinformatics/treatment-plans",
+    "name": "treatment-plans",
+    "description": "Generate concise (3-4 page), focused medical treatment plans in LaTeX/PDF format for all clinical specialties. Supports general medical treatment, rehabilitation therapy, mental health care, chronic disease management, perioperative care, and pain management. Includes SMART goal frameworks, evidence-based interventions with minimal text citations, regulatory compliance (HIPAA), and professional formatting. Prioritizes brevity and clinical actionability.",
+    "domain": "Clinical and Medical Applications"
+   },
+   {
+    "id": "bioinformatics/pharmgx-reporter",
+    "name": "pharmgx-reporter",
+    "description": "Generate pharmacogenomics (PGx) reports from 23andMe/AncestryDNA raw genotypes: star-allele and diplotype calls, CPIC-level drug recommendations, and JSON/HTML/Markdown output; for research and education use, not clinical diagnosis.",
+    "domain": "Clinical and Medical Applications"
+   },
+   {
+    "id": "biomcp_variant_normalize_car",
+    "name": "BioMCP ClinGen CAR Normalization",
+    "description": "Perform a bounded ClinGen Allele Registry normalization lookup for supported RefSeq HGVS; returns source facts without inferring equivalence.",
+    "domain": "Clinical and Medical Applications"
+   },
+   {
+    "id": "biomcp_variant_erepo",
+    "name": "BioMCP ClinGen ERepo Assertions",
+    "description": "Read expert-curated variant assertions from the ClinGen Evidence Repository, preserving versioned source facts.",
+    "domain": "Clinical and Medical Applications"
+   },
+   {
+    "id": "biomcp_gene_cspec",
+    "name": "BioMCP ClinGen CSpec Listing",
+    "description": "List gene-related CSpec resource IRIs and paginated content; used to verify the sources of ACMG/AMP rules.",
+    "domain": "Clinical and Medical Applications"
+   },
+   {
+    "id": "bioinformatics/molecular-cloning",
+    "name": "molecular-cloning",
+    "description": "Molecular cloning simulation and design. PCR amplicon prediction, restriction enzyme digestion, Golden Gate and Gibson assembly simulation, primer design, CRISPR sgRNA design, and plasmid annotation. For protein-level sequence analysis use biopython or esm; for database lookups use gene-database or ensembl-database.",
+    "domain": "Experimental Design and Automation"
+   },
+   {
+    "id": "bioinformatics/synthetic-biology",
+    "name": "synthetic-biology",
+    "description": "Synthetic biology design and simulation tools. Codon optimization, gene circuit ODE modeling with growth feedback, SBML model creation, bifurcation analysis, barcode sequencing fitness analysis, and therapeutic genome engineering. For metabolic modeling use cobrapy; for sequence tools use biopython.",
+    "domain": "Experimental Design and Automation"
+   },
+   {
+    "id": "bioinformatics/immunology-assays",
+    "name": "immunology-assays",
+    "description": "Computational analysis of immunology experimental data. ATAC-seq differential accessibility, immune cell tracking from microscopy, ELISA data processing with 4-parameter logistic fitting, immunohistochemistry quantification, antibody titer analysis, and cell cycle phase duration estimation. For flow cytometry use flow-cytometry-analysis; for scRNA-seq use scanpy.",
+    "domain": "Experimental Design and Automation"
+   },
+   {
+    "id": "bioinformatics/pharmacology-wetlab",
+    "name": "pharmacology-wetlab",
+    "description": "Computational analysis of pharmacology wet-lab experiments. Western blot densitometry, xenograft tumor growth inhibition, pharmaceutical stability modeling (Arrhenius), radiolabeled antibody biodistribution, MIRD dosimetry, and adverse event grading. For drug databases use chembl-database or fda-database; for molecular docking use diffdock.",
+    "domain": "Experimental Design and Automation"
+   },
+   {
+    "id": "bioinformatics/glycobiology",
+    "name": "glycobiology",
+    "description": "Glycosylation site prediction and glycobiology analysis. N-glycosylation motif finding, O-glycosylation hotspot prediction, glycan structure resources. Lightweight, pure Python. For protein function queries use uniprot-database; for structure analysis use alphafold-database.",
+    "domain": "Experimental Design and Automation"
+   },
+   {
+    "id": "bioinformatics/opentrons-integration",
+    "name": "opentrons-integration",
+    "description": "Official Opentrons Protocol API for OT-2 and Flex robots. Use when writing protocols specifically for Opentrons hardware with full access to Protocol API v2 features. Best for production Opentrons protocols, official API compatibility. For multi-vendor automation or broader equipment control use pylabrobot.",
+    "domain": "Experimental Design and Automation"
+   },
+   {
+    "id": "skill-creator",
+    "name": "skill-creator",
+    "description": "Create new skills, modify and improve existing skills, and measure skill performance. Use when users want to create a skill from scratch, edit, or optimize an existing skill, run evals to test a skill, benchmark skill performance with variance analysis, or optimize a skill's description for better triggering accuracy.",
+    "domain": "Skill and Tool Development"
+   }
+  ],
+  "kb": [
+   {
+    "id": "General Science/experimental-design-and-sample-size",
+    "name": "Experimental Design and Sample Size",
+    "description": "Basic requirements for controls, randomization, blocking, replication, and power analysis, plus common pseudoreplication mistakes.",
+    "domain": "General Science"
+   },
+   {
+    "id": "General Science/hypothesis-testing-and-p-values",
+    "name": "Hypothesis Testing and P Values",
+    "description": "Correctly interpret p-values, significance levels, and confidence intervals; avoid mistaking statistical significance for scientific importance.",
+    "domain": "General Science"
+   },
+   {
+    "id": "General Science/multiple-testing-and-false-discovery-rate",
+    "name": "Multiple Testing and False Discovery Rate",
+    "description": "How to trade off family-wise error rate and false discovery rate when testing many hypotheses simultaneously.",
+    "domain": "General Science"
+   },
+   {
+    "id": "General Science/research-data-and-reproducibility",
+    "name": "Research Data and Reproducibility",
+    "description": "Practical approaches to raw data management, metadata, version control, and computational reproducibility.",
+    "domain": "General Science"
+   },
+   {
+    "id": "Bioinformatics/anndata",
+    "name": "anndata",
+    "description": "Data structure for annotated matrices in single-cell analysis. Use when working with .h5ad files or integrating with the scverse ecosystem. This is the data format skill—for analysis workflows use scanpy; for probabilistic models use scvi-tools; for population-scale queries use cellxgene-census.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/biological-data-file-formats",
+    "name": "Biological Data File Formats",
+    "description": "Meaning, indexing, and 0/1-based pitfalls of common formats such as FASTA/FASTQ/BAM/CRAM/VCF/GFF/BED.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/biopython",
+    "name": "biopython",
+    "description": "Comprehensive molecular biology toolkit. Use for sequence manipulation, file parsing (FASTA/GenBank/PDB), phylogenetics, and programmatic NCBI/PubMed access (Bio.Entrez). Best for batch processing, custom bioinformatics pipelines, BLAST automation. For quick lookups use gget; for multi-service integration use bioservices.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/clinical-variant-interpretation",
+    "name": "Clinical Variant Interpretation",
+    "description": "Decision points on germline ACMG/AMP and ClinGen SVI specifications, VUS handling, ClinVar/gnomAD evidence rules, CNV and somatic tiering, and the boundaries of reporting.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/cobrapy",
+    "name": "cobrapy",
+    "description": "Constraint-based metabolic modeling (COBRA). FBA, FVA, gene knockouts, flux sampling, SBML models, for systems biology and metabolic engineering analysis.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/common-public-databases",
+    "name": "Common Public Databases",
+    "description": "Purpose, versioning, and access considerations for databases such as NCBI, Ensembl, UCSC, UniProt, PDB, and GEO/SRA.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/esm",
+    "name": "esm",
+    "description": "Comprehensive toolkit for protein language models including ESM3 (generative multimodal protein design across sequence, structure, and function) and ESM C (efficient protein embeddings and representations). Use this skill when working with protein sequences, structures, or function prediction; designing novel proteins; generating protein embeddings; performing inverse folding; or conducting protein engineering tasks. Supports both local model usage and cloud-based Forge API for scalable inference.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/flowio",
+    "name": "flowio",
+    "description": "Parse FCS (Flow Cytometry Standard) files v2.0-3.1. Extract events as NumPy arrays, read metadata/channels, convert to CSV/DataFrame, for flow cytometry data preprocessing.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/histolab",
+    "name": "histolab",
+    "description": "Lightweight WSI tile extraction and preprocessing. Use for basic slide processing tissue detection, tile extraction, stain normalization for H&E images. Best for simple pipelines, dataset preparation, quick tile-based analysis. For advanced spatial proteomics, multiplexed imaging, or deep learning pipelines use pathml.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/lamindb",
+    "name": "lamindb",
+    "description": "This skill should be used when working with LaminDB, an open-source data framework for biology that makes data queryable, traceable, reproducible, and FAIR. Use when managing biological datasets (scRNA-seq, spatial, flow cytometry, etc.), tracking computational workflows, curating and validating data with biological ontologies, building data lakehouses, or ensuring data lineage and reproducibility in biological research. Covers data management, annotation, ontologies (genes, cell types, diseases, tissues), schema validation, integrations with workflow managers (Nextflow, Snakemake) and MLOps platforms (W&B, MLflow), and deployment strategies.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/neurokit2",
+    "name": "neurokit2",
+    "description": "Comprehensive biosignal processing toolkit for analyzing physiological data including ECG, EEG, EDA, RSP, PPG, EMG, and EOG signals. Use this skill when processing cardiovascular signals, brain activity, electrodermal responses, respiratory patterns, muscle activity, or eye movements. Applicable for heart rate variability analysis, event-related potentials, complexity measures, autonomic nervous system assessment, psychophysiology research, and multi-modal physiological signal integration.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/pathml",
+    "name": "pathml",
+    "description": "Full-featured computational pathology toolkit. Use for advanced WSI analysis including multiplexed immunofluorescence (CODEX, Vectra), nucleus segmentation, tissue graph construction, and ML model training on pathology data. Supports 160+ slide formats. For simple tile extraction from H&E slides, histolab may be simpler.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/pyhealth",
+    "name": "pyhealth",
+    "description": "Comprehensive healthcare AI toolkit for developing, testing, and deploying machine learning models with clinical data. This skill should be used when working with electronic health records (EHR), clinical prediction tasks (mortality, readmission, drug recommendation), medical coding systems (ICD, NDC, ATC), physiological signals (EEG, ECG), healthcare datasets (MIMIC-III/IV, eICU, OMOP), or implementing deep learning models for healthcare applications (RETAIN, SafeDrug, Transformer, GNN).",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/pysam",
+    "name": "pysam",
+    "description": "Genomic file toolkit. Read/write SAM/BAM/CRAM alignments, VCF/BCF variants, FASTA/FASTQ sequences, extract regions, calculate coverage, for NGS data processing pipelines.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/rna-seq-analysis-workflow-overview",
+    "name": "RNA-seq Analysis Workflow Overview",
+    "description": "The standard workflow from raw reads to differential expression and enrichment analysis, including key decision points and common pitfalls.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/scikit-bio",
+    "name": "scikit-bio",
+    "description": "Biological data toolkit. Sequence analysis, alignments, phylogenetic trees, diversity metrics (alpha/beta, UniFrac), ordination (PCoA), PERMANOVA, FASTA/Newick I/O, for microbiome analysis.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/scikit-survival",
+    "name": "scikit-survival",
+    "description": "Comprehensive toolkit for survival analysis and time-to-event modeling in Python using scikit-survival. Use this skill when working with censored survival data, performing time-to-event analysis, fitting Cox models, Random Survival Forests, Gradient Boosting models, or Survival SVMs, evaluating survival predictions with concordance index or Brier score, handling competing risks, or implementing any survival analysis workflow with the scikit-survival library.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/scvi-tools",
+    "name": "scvi-tools",
+    "description": "Deep generative models for single-cell omics. Use when you need probabilistic batch correction (scVI), transfer learning, differential expression with uncertainty, or multi-modal integration (TOTALVI, MultiVI). Best for advanced modeling, batch effects, multimodal data. For standard analysis pipelines use scanpy.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/sequencing-technologies-overview",
+    "name": "Sequencing Technologies Overview",
+    "description": "Characteristics, error modes, and selection criteria for Sanger, Illumina short reads, PacBio HiFi, and Nanopore.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/single-cell-transcriptomics-overview",
+    "name": "Single-Cell Transcriptomics Overview",
+    "description": "Key steps and caveats in scRNA-seq analysis, from quality control and normalization to clustering, annotation, and differential expression.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/spatial-transcriptomics-overview",
+    "name": "Spatial Transcriptomics Overview",
+    "description": "Decision points and interpretation limits for Visium, Xenium, CosMx, Slide-seq, and similar platforms: data formats, QC, spatial plots, domain identification, deconvolution, and cell-cell communication analysis.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Bioinformatics/variant-calling-and-filtering-best-practices",
+    "name": "Variant Calling and Filtering Best Practices",
+    "description": "Decision-level guidance on engine selection, filtering strategies, VCF normalization, sample QC, and benchmarking for germline, somatic, and long-read variant calling.",
+    "domain": "Bioinformatics"
+   },
+   {
+    "id": "Research Platforms and Data Integration/benchling-integration",
+    "name": "benchling-integration",
+    "description": "Benchling R&D platform integration. Access registry (DNA, proteins), inventory, ELN entries, workflows via API, build Benchling Apps, query Data Warehouse, for lab data management automation.",
+    "domain": "Research Platforms and Data Integration"
+   },
+   {
+    "id": "Research Platforms and Data Integration/dnanexus-integration",
+    "name": "dnanexus-integration",
+    "description": "DNAnexus cloud genomics platform. Build apps/applets, manage data (upload/download), dxpy Python SDK, run workflows, FASTQ/BAM/VCF, for genomics pipeline development and execution.",
+    "domain": "Research Platforms and Data Integration"
+   },
+   {
+    "id": "Research Platforms and Data Integration/latchbio-integration",
+    "name": "latchbio-integration",
+    "description": "Latch platform for bioinformatics workflows. Build pipelines with Latch SDK, @workflow/@task decorators, deploy serverless workflows, LatchFile/LatchDir, Nextflow/Snakemake integration.",
+    "domain": "Research Platforms and Data Integration"
+   },
+   {
+    "id": "Research Platforms and Data Integration/omero-integration",
+    "name": "omero-integration",
+    "description": "Microscopy data management platform. Access images via Python, retrieve datasets, analyze pixels, manage ROIs/annotations, batch processing, for high-content screening and microscopy workflows.",
+    "domain": "Research Platforms and Data Integration"
+   },
+   {
+    "id": "Research Platforms and Data Integration/protocolsio-integration",
+    "name": "protocolsio-integration",
+    "description": "Integration with protocols.io API for managing scientific protocols. This skill should be used when working with protocols.io to search, create, update, or publish protocols; manage protocol steps and materials; handle discussions and comments; organize workspaces; upload and manage files; or integrate protocols.io functionality into workflows. Applicable for protocol discovery, collaborative protocol development, experiment tracking, lab protocol management, and scientific documentation.",
+    "domain": "Research Platforms and Data Integration"
+   },
+   {
+    "id": "Research Platforms and Data Integration/pylabrobot",
+    "name": "pylabrobot",
+    "description": "Vendor-agnostic lab automation framework. Use when controlling multiple equipment types (Hamilton, Tecan, Opentrons, plate readers, pumps) or needing unified programming across different vendors. Best for complex workflows, multi-vendor setups, simulation. For Opentrons-only protocols with official API, opentrons-integration may be simpler.",
+    "domain": "Research Platforms and Data Integration"
+   }
+  ]
+ },
+ "output_schema": {
+  "type": "object",
+  "required": [
+   "state_sha256",
+   "verdict",
+   "reason"
+  ],
+  "properties": {
+   "state_sha256": {
+    "type": "string"
+   },
+   "verdict": {
+    "enum": [
+     "correct",
+     "incorrect"
+    ]
+   },
+   "corrected_gold": {
+    "type": [
+     "string",
+     "null"
+    ]
+   },
+   "corrected_grades": {
+    "type": [
+     "object",
+     "null"
+    ]
+   },
+   "reason": {
+    "type": "string",
+    "maxLength": 400
+   }
+  },
+  "additionalProperties": false
+ },
+ "forbid_texts": []
+}

@@ -1,0 +1,9 @@
+Biod
+Copyright 2026 Bioflow contributors
+
+The trained heads and adapters are released under Apache-2.0. They are built
+on Qwen3.5-4B-Base, which is governed by the Qwen model license. Users are
+responsible for complying with the base-model license.
+
+Training and evaluation code may use third-party Python packages; see
+requirements.txt and the installed packages for their licenses.
