@@ -1,7 +1,7 @@
 """Unit tests for the pointer-render / collate logic (no GPU, no real tokenizer).
 
 Run locally:  ``python3 tests/test_train_collate.py``
-Run on deployment-host: ``.venv/bin/python -m pytest tests/test_train_collate.py -q``
+Run on the host: ``.venv/bin/python -m pytest tests/test_train_collate.py -q``
 
 A character-level fake tokenizer with identity offset mapping exercises the
 whole char-span -> token-index pipeline deterministically, so these tests catch

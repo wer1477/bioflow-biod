@@ -26,7 +26,7 @@ def _env_key() -> str:
     key = os.environ.get("BIOFLOW_LLM_API_KEY_DGX", "")
     if key:
         return key
-    env_path = "/path/to/bioflow/agent-client/backend/.env"
+    env_path = "/path/to/bioflow-dev/agent-client/backend/.env"
     if os.path.isfile(env_path):
         for line in open(env_path, encoding="utf-8"):
             line = line.strip()

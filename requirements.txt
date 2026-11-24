@@ -9,3 +9,4 @@ scikit-learn>=1.4
 fastapi>=0.110
 uvicorn>=0.29
 pydantic>=2.6
+huggingface_hub>=0.23

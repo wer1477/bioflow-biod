@@ -41,7 +41,7 @@ from .metrics import (
     tool_metrics,
 )
 from .model import MultiTaskBiodModel
-from .tasks import TASK_SPECS, TASKS
+from .tasks import ROUTING_TASKS, TASK_SPECS
 
 # micro-batch / accumulation per task; effective batch ~16-32
 BATCH_PLAN = {
@@ -195,11 +195,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", required=True)
     parser.add_argument("--out-dir", required=True)
-    parser.add_argument("--base-model", default="Qwen/Qwen3.5-9B-Base")
+    parser.add_argument("--base-model", default="Qwen/Qwen3.5-4B-Base")
     parser.add_argument("--epochs", type=int, default=2)
     parser.add_argument("--max-steps", type=int, default=0)
     parser.add_argument("--smoke", action="store_true")
-    parser.add_argument("--tasks", default=",".join(TASKS))
+    parser.add_argument("--tasks", default=",".join(ROUTING_TASKS))
     parser.add_argument("--lr-lora", type=float, default=1e-4)
     parser.add_argument("--lr-head", type=float, default=1e-3)
     parser.add_argument("--head-hidden", type=int, default=1024)
@@ -211,6 +211,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--val-limit", type=int, default=0)
     parser.add_argument("--init-adapter", default=None)
     parser.add_argument("--init-heads", default=None)
+    parser.add_argument("--train-adapter", action="store_true", help="train an adapter loaded through --init-adapter")
     parser.add_argument("--train-heads", default="")
     args = parser.parse_args(argv)
 
@@ -218,6 +219,12 @@ def main(argv: list[str] | None = None) -> int:
     for task in tasks:
         if task not in TASK_SPECS:
             parser.error(f"unknown task {task!r}")
+    if not tasks or len(set(tasks)) != len(tasks):
+        parser.error("--tasks must contain distinct task names")
+    if args.train_adapter and (not args.init_adapter or args.train_heads):
+        parser.error("--train-adapter requires --init-adapter and cannot be combined with --train-heads")
+    random.seed(args.seed)
+    torch.manual_seed(args.seed)
     os.makedirs(args.out_dir, exist_ok=True)
     log_path = os.path.join(args.out_dir, "train_log.jsonl")
     if os.path.exists(log_path):
@@ -245,7 +252,10 @@ def main(argv: list[str] | None = None) -> int:
                 data[task][split] = []
         print(f"[data] {task}: train={len(data[task]['train'])} val={len(data[task]['val'])}", flush=True)
 
-    model = MultiTaskBiodModel(cfg, device=args.device, init_adapter=args.init_adapter)
+    model = MultiTaskBiodModel(
+        cfg, device=args.device, init_adapter=args.init_adapter,
+        routing_only=set(tasks).issubset(ROUTING_TASKS), train_adapter=args.train_adapter,
+    )
     if args.init_heads:
         model.load_heads(args.init_heads)
     if args.train_heads:
@@ -256,7 +266,10 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit(f"train-heads not found: {sorted(missing)}")
         for name, param in model.named_parameters():
             param.requires_grad_(name.split(".")[0] in keep)
+    model.body_trainable = any(p.requires_grad for p in model.text.parameters())
     model.train()
+    if not model.body_trainable:
+        model.text.eval()
     print("[model]", json.dumps(model.parameter_summary(), ensure_ascii=False), flush=True)
 
     optimizer = torch.optim.AdamW(model.optimizer_groups(), betas=(0.9, 0.999), eps=1e-8)
@@ -334,6 +347,8 @@ def main(argv: list[str] | None = None) -> int:
         metrics = validate(model, tokenizer, {t: data[t]["val"] for t in tasks},
                            {"kb_tau": args.kb_tau, "kb_top_k": args.kb_top_k})
         model.train()
+        if not model.body_trainable:
+            model.text.eval()
         score = score_of(metrics)
         summary = {"event": "epoch", "epoch": epoch, "step": global_step, "score": score, "metrics": metrics}
         _log(log_path, summary)

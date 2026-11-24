@@ -1,40 +1,44 @@
-# Models — Paper 1 model store
+# Models
 
-本目录管理基座模型与 `biod2` 决策模型。权重 payload 不纳入 git
-（`.gitignore` 的 `Models/foundation-model/`、`Models/biod2/v*/`）；只跟踪 README 与 MANIFEST。
+Model payloads are not tracked in this repository.
 
-```
-Models/
-├── README.md
-├── foundation-model/
-│   ├── Qwen3.5-2B-Base/     # 容量低锚（hidden 2048 / 24 层）
-│   ├── Qwen3.5-4B-Base/     # 容量中臂（hidden 2560 / 32 层）
-│   └── Qwen3.5-9B-Base/     # 容量高臂（hidden 4096 / 32 层）
-└── biod2/
-    ├── MANIFEST.json        # 新 7 头/9-task 版本表；当前为空
-    └── <new-version>/       # retrain 后写入：adapter + heads.pt + config + train_manifest
-```
+## Base tower
 
-## foundation-model
+The released checkpoint is trained on `Qwen/Qwen3.5-4B-Base`. Download the base tower from Hugging
+Face and either place it at the absolute path recorded in the checkpoint's `model_config.json`, or edit
+that entry to point at your local copy. The base model is not redistributed here and remains under the
+Qwen model license.
 
-三个底座都是 `.hf_cache` 的硬链接镜像（`cp -aLl`，同 inode，不额外占盘）。
-2B/4B/9B 同 Qwen3.5 家族、同 tokenizer、同 `Qwen3_5ForConditionalGeneration`；
-4B/9B 同为 32 层，2B 为 24 层（解释容量效应时注意深度混杂）。
+## Released checkpoint
 
-## biod2
-
-- 旧 `v1`（`biod-mt-v2` = `multitask-v5`）已归档到
-  `other/archive-pre-paper1-20261103/models/biod2-v1/`；其 kb/context/relay 头不可用，不要部署。
-- 新实验统一 7 头、9-task、SFT+LoRA 从零训练；2B/4B/9B 三个容量共用同一数据与 recipe。
-- 新版本建议命名：`Models/biod2/paper1-2b-v1/`、`paper1-4b-v1/`、`paper1-9b-v1/`；
-  训练完成后更新 `MANIFEST.json`（路径 / sha256 / tasks / data manifest / git commit / deploy pin）。
-
-## 用法
+The evaluated five-head checkpoint is released at
+[huggingface.co/wer1477/biod-mt-v2-4b](https://huggingface.co/wer1477/biod-mt-v2-4b):
 
 ```bash
-# 基座（本地目录，不需要 HF_HOME）
---base-model Models/foundation-model/Qwen3.5-4B-Base
+scripts/download-weights.sh /path/to/biod-mt-v2-4b
+```
 
-# 决策模型（retrain 后）
-python -m biod.multitask.serve --ckpt Models/biod2/paper1-9b-v1 --host 127.0.0.1 --port 8790
+The download fetches exactly five files, so the directory fingerprint reported by
+`/v1/health` (`sha256-tree-v1`) matches the checkpoint hash in the paper:
+
+```text
+biod-mt-v2-4b/
+├── heads.pt
+├── model_config.json
+└── adapter/
+    ├── adapter_config.json
+    ├── adapter_model.safetensors
+    └── README.md
+```
+
+If you download the Hugging Face repository with a generic client, select these five paths explicitly;
+extra files in the directory change the directory fingerprint.
+
+## Local layout
+
+```text
+Models/
+├── foundation-model/
+│   └── Qwen3.5-4B-Base/   # not tracked
+└── biod-mt-v2-4b/         # not tracked; released on Hugging Face
 ```

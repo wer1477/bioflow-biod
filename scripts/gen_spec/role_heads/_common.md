@@ -14,7 +14,7 @@
 调用方会给你目标文件路径。用追加写入：
 
 ```bash
-ssh deployment-host 'cat >> /path/to/Biod/artifacts/datasets/v3/role_heads/raw/<task>/<run>.jsonl' <<'EOF'
+ssh the host 'cat >> /path/to/Biod/artifacts/datasets/v3/role_heads/raw/<task>/<run>.jsonl' <<'EOF'
 {json line 1}
 {json line 2}
 EOF

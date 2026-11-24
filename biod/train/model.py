@@ -1,6 +1,6 @@
 """Frozen Qwen3.5-4B text tower + LoRA + two fp32 pointer heads.
 
-Architecture facts verified against ``transformers 5.20.2`` on deployment-host
+Architecture facts verified against ``transformers 5.20.2`` on the host
 (2026-10-22):
 
 * ``Qwen/Qwen3.5-4B-Base`` is a ``Qwen3_5ForConditionalGeneration`` wrapper;

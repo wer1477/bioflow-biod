@@ -30,7 +30,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
-os.environ.setdefault("HF_HOME", "/path/to/Biod/.hf_cache")
+os.environ.setdefault("HF_HOME", os.path.expanduser("~/.cache/huggingface"))
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
 os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
@@ -40,7 +40,8 @@ from transformers import AutoTokenizer
 from biod.multitask.catalog import CatalogOption, load_catalog_snapshot
 from biod.multitask.data import Sample
 from biod.multitask.infer import predict_encoded
-from biod.multitask.collate import encode_sample
+from biod.multitask.batching import InferenceQueue
+from biod.multitask.collate import batch_key, encode_sample
 from biod.multitask.model import MultiTaskBiodModel
 from biod.multitask.render import render_context, render_relay, render_role, render_tool, render_kb
 from biod.multitask.tasks import CONTEXT_LABELS, RELAY_VERDICTS, ROLES, TASK_SPECS
@@ -50,7 +51,10 @@ SERVE_VERSION = "biod-mt-v2"
 
 
 class Predictor:
-    def __init__(self, checkpoint: str, device: str = "cuda", max_len: dict | None = None):
+    def __init__(
+        self, checkpoint: str, device: str = "cuda", max_len: dict | None = None,
+        *, max_batch_size: int = 1, batch_window_ms: float = 3, max_batch_tokens: int = 8192,
+    ):
         self.checkpoint = checkpoint
         self.device = device
         with open(os.path.join(checkpoint, "model_config.json"), encoding="utf-8") as fh:
@@ -63,11 +67,21 @@ class Predictor:
         self.tokenizer = AutoTokenizer.from_pretrained(self.base_model, local_files_only=True)
         if self.tokenizer.pad_token_id is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
-        self.model = MultiTaskBiodModel(cfg, device=device, init_adapter=os.path.join(checkpoint, "adapter"))
+        from .tasks import ROUTING_TASKS
+
+        routing_only = set(mc.get("tasks") or []) == set(ROUTING_TASKS)
+        self.model = MultiTaskBiodModel(
+            cfg, device=device, init_adapter=os.path.join(checkpoint, "adapter"),
+            routing_only=routing_only,
+        )
         self.model.load_heads(os.path.join(checkpoint, "heads.pt"))
         self.model.eval()
         self.catalog = load_catalog_snapshot()
         self.lock = threading.Lock()
+        self.batch_queue = InferenceQueue(
+            self._predict, max_size=max_batch_size, wait_ms=batch_window_ms,
+            max_tokens=max_batch_tokens,
+        ) if max_batch_size > 1 else None
         self.max_len = max_len or {t: TASK_SPECS[t].max_len for t in TASK_SPECS}
         # Warm up CUDA/FLA kernels before the first real request: the first
         # 9B forward pays ~6s of one-time cost, which would exceed the Node
@@ -82,13 +96,26 @@ class Predictor:
     def _resolve(self, c) -> CatalogOption:
         return _resolve_option(self.catalog, c)
 
+    def _predict(self, key, encoded):
+        (task, *_), policy = key
+        with self.lock, torch.no_grad():
+            return predict_encoded(self.model, self.tokenizer, encoded, task, dict(policy))
+
     def _run(self, sample: Sample, task: str, cfg: dict | None = None) -> dict:
+        start = time.monotonic()
         enc = encode_sample(sample, self.tokenizer, self.max_len[task])
         if enc is None:
             raise ValueError("prompt exceeds max_len")
-        with self.lock, torch.no_grad():
-            preds = predict_encoded(self.model, self.tokenizer, [enc], task, cfg or {})
-        return preds[0]
+        encoded = time.monotonic()
+        key = (batch_key(enc), tuple(sorted((cfg or {}).items())))
+        if self.batch_queue is None:
+            result, = self._predict(key, [enc])
+            timing = {"queueMs": 0, "inferMs": round((time.monotonic() - encoded) * 1000, 2),
+                      "batchSize": 1}
+        else:
+            result, timing = self.batch_queue.submit(key, enc, enc.prompt_len)
+        return {**result, "timing": {**timing, "encodeMs": round((encoded - start) * 1000, 2)}}
+
 
     # -- public decisions ----------------------------------------------------
     def tool(self, state: str, candidates: list[dict], role: str = "", tau: float = 0.0) -> dict:
@@ -105,6 +132,7 @@ class Predictor:
             "confidence": pred["confidence"],
             "noToolProb": pred["no_tool_prob"],
             "candidateCount": len(options),
+            "serviceTiming": pred["timing"],
         }
 
     def kb(self, state: str, candidates: list[dict], role: str = "", tau: float = 0.5, top_k: int = 3) -> dict:
@@ -117,10 +145,11 @@ class Predictor:
             "scores": [{"id": k, "p": v} for k, v in pred["scores"].items()],
             "confidence": max(pred["scores"].values()) if pred["scores"] else 0.0,
             "candidateCount": len(options),
+            "serviceTiming": pred["timing"],
         }
 
     def pairs(self, task: str, items: list[dict]) -> dict:
-        if task not in ("premise_judge", "overclaim_flag"):
+        if task not in ("premise_judge", "overclaim_flag") or task not in self.model.tasks:
             raise ValueError(f"unsupported pair task {task!r}")
         if len(items) > 32:
             raise ValueError(f"too many items ({len(items)} > 32)")
@@ -264,6 +293,32 @@ def _git_commit(repo_root: pathlib.Path) -> str:
         return ""
 
 
+def _received_transport(payload: dict) -> dict:
+    """Summarize the candidate cards the sidecar actually parsed from one request."""
+    candidates = payload.get("candidates")
+    rows = candidates if isinstance(candidates, list) else []
+    descriptors = [row for row in rows if isinstance(row, dict)]
+    description_chars = sum(len(str(row.get("description") or "")) for row in descriptors)
+    catalog = payload.get("catalog") if isinstance(payload.get("catalog"), dict) else {}
+
+    def _count(value, fallback):
+        try:
+            return max(0, int(value))
+        except (TypeError, ValueError):
+            return fallback
+
+    count = len(rows)
+    return {
+        "mode": "descriptions" if descriptors else "ids",
+        "candidateCount": count,
+        "descriptionChars": description_chars,
+        "truncated": bool(catalog.get("truncated")),
+        "catalogFingerprint": str(catalog.get("fingerprint") or ""),
+        "catalogTotal": _count(catalog.get("total"), count),
+        "shortlist": _count(catalog.get("shortlist"), count),
+    }
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "biod-mt/" + SERVE_VERSION
     protocol_version = "HTTP/1.1"
@@ -292,11 +347,17 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/v1/health":
             payload = {"ok": True, "status": "ready", "modelVersion": SERVE_VERSION, "device": "cuda",
                        "optionCounts": {"tool": 0, "kb": 0}, "queueDepth": 0}
+            batcher = getattr(self.predictor, "batch_queue", None)
+            if batcher is not None:
+                payload["queueDepth"] = batcher.depth()
             payload.update(getattr(self.server, "fingerprint", {}) or {})
             self._send(200, payload)
         elif self.path == "/v1/version":
             payload = {"ok": True, "modelVersion": SERVE_VERSION, "ckptOptionIdsHash": "", "catalogHash": "",
-                       "optionIds": {"tool": [], "kb": []}}
+                       "optionIds": {"tool": [], "kb": []},
+                       "supportsCandidateDescriptions": True,
+                       "candidateBudget": {"maxCandidates": 64, "descriptionChars": 512,
+                                           "totalDescriptionChars": 16384}}
             payload.update(getattr(self.server, "fingerprint", {}) or {})
             self._send(200, payload)
         else:
@@ -336,10 +397,21 @@ class Handler(BaseHTTPRequestHandler):
             result["ok"] = True
             result["decisionId"] = str(payload.get("requestId") or "")
             result["latencyMs"] = round((time.time() - started) * 1000, 1)
+            if self.path == "/v1/decide":
+                # Echo what this process actually received. The client records this object,
+                # so "descriptions reached the sidecar" is auditable rather than inferred.
+                result["transport"] = _received_transport(payload)
             result["modelVersion"] = SERVE_VERSION
             self._send(200, result)
         except Exception as exc:  # fail loudly but never crash the server
-            self._send(500, {"error": f"{type(exc).__name__}: {exc}"})
+            message = f"{type(exc).__name__}: {exc}"
+            if isinstance(exc, ValueError) and "max_len" in str(exc):
+                # The candidate cards fit the client budget but not this checkpoint's
+                # encoder. Return a typed error so the runtime falls back to browsing
+                # instead of treating it as an opaque 500.
+                self._send(413, {"error": {"code": "PROMPT_TOO_LONG", "message": message}})
+            else:
+                self._send(500, {"error": message})
 
 
 class Server(ThreadingHTTPServer):
@@ -358,8 +430,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--ckpt", required=True)
     ap.add_argument("--device", default="cuda")
     ap.add_argument("--dtype", default="")
+    ap.add_argument("--max-batch-size", type=int, default=1, choices=range(1, 5))
+    ap.add_argument("--batch-window-ms", type=float, default=3)
+    ap.add_argument("--max-batch-tokens", type=int, default=8192)
     args = ap.parse_args(argv)
-    predictor = Predictor(args.ckpt, args.device)
+    if not 0 <= args.batch_window_ms <= 100 or args.max_batch_tokens < 1:
+        ap.error("batch-window-ms must be between 0 and 100, max-batch-tokens must be positive")
+    predictor = Predictor(
+        args.ckpt, args.device, max_batch_size=args.max_batch_size,
+        batch_window_ms=args.batch_window_ms, max_batch_tokens=args.max_batch_tokens,
+    )
     server = Server((args.host, args.port), predictor)
     fingerprint = checkpoint_fingerprint(args.ckpt)
     fingerprint["serveCommit"] = _git_commit(pathlib.Path(__file__).resolve().parents[2])

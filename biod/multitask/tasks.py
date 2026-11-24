@@ -10,15 +10,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-TASKS = (
+ROUTING_TASKS = (
     "tool_select",
     "kb_select",
     "context_retention",
     "role_select",
     "relay_select",
-    "premise_judge",
-    "overclaim_flag",
 )
+TASKS = ROUTING_TASKS + ("premise_judge", "overclaim_flag")
 
 ROLES = ("pi", "searcher", "researcher", "writer", "reviewer")
 CONTEXT_LABELS = ("keep", "summarise", "drop")

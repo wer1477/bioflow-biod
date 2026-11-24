@@ -1,9 +1,66 @@
-.venv/
+# --- Python ---
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# --- virtualenvs / model & data caches (never commit) ---
+.venv/
+venv/
 .hf_cache/
-artifacts/
-Models/*/
-Datasets/*.json
-*.pt
-*.safetensors
+.tmp/
+
+# --- secrets ---
+.env
+*.env
+!*.env.example
+
+# --- RSI research: third-party clones + runtime ---
+RSI/.venv/
+RSI/code/
+RSI/logs/
+
+# --- execution sandbox / remote-only state ---
+other/
+artifacts_zero_training/
+
+# --- DevLog is local-only (AGENTS.md) ---
+DevLog/
+
+# --- OS / editor ---
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# --- kb_baseline runtime caches (embeddings) ---
+kb_baseline/v1/results/cache/
+*.npz
+
+# --- kb_baseline runtime outputs not committed (regenerable) ---
+kb_baseline/v1/results/raw/
+kb_baseline/v1/results/logs/
+
+# --- toollibrary baseline runtime outputs (regenerable) ---
+toollibrary_baseline/v1/results/raw/
+toollibrary_baseline/v1/results/logs/
+
+# --- SFT v0 runtime artifacts: checkpoints / logs / per-step logs (regenerable) ---
+artifacts/runs/logs/
+artifacts/runs/**/adapter/
+artifacts/runs/**/*.pt
+artifacts/runs/**/*.safetensors
+artifacts/runs/**/train_log.jsonl
+
+# --- model checkpoints (large, regenerable) ---
+artifacts/runs/
+artifacts/eval/
+artifacts/datasets/
+
+# --- canonical dataset/model stores (payloads stay out of git; indexes are tracked) ---
+Datasets/v*/
+Datasets/by-decision/
+Datasets/paper1/
+Models/foundation-model/
+Models/biod2/*/
+/DevLog/

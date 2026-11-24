@@ -24,7 +24,7 @@ NO_TOOL_ID = "NO_TOOL"
 
 DEFAULT_DATA_DIR = "Datasets/v2/multitask"
 DEFAULT_BASE_MODEL = "Qwen/Qwen3.5-4B-Base"
-DEFAULT_HF_HOME = "/path/to/Biod/.hf_cache"
+DEFAULT_HF_HOME = os.path.expanduser("~/.cache/huggingface")
 
 # Contract §3: r=16, alpha=32, dropout=0.05, exactly these 12 target suffixes.
 LORA_TARGETS = (
@@ -169,7 +169,7 @@ def new_run_id(task: str, smoke: bool = False, now: float | None = None) -> str:
 
 
 def setup_offline_env() -> None:
-    """HF must be offline on deployment-host (network hangs); cache lives in HF_HOME."""
+    """HF must be offline on the host (network hangs); cache lives in HF_HOME."""
     os.environ.setdefault("HF_HUB_OFFLINE", "1")
     os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
     os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
